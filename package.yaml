@@ -22,9 +22,6 @@ dependencies:
 - base >= 4.7 && < 5
 - containers
 
-library:
-  source-dirs: src
-
 ghc-options:
 - -Wall
 - -Werror
@@ -38,5 +35,3 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    dependencies:
-    - ProtoChunkDB
