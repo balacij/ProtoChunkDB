@@ -12,6 +12,8 @@ import Chunk (HasChunkRefs, IsChunk)
 import ChunkDB (ChunkDB, find)
 import UID (HasUID (uid), UID)
 
+-- | 'TypedUIDRef' represents typed references to chunks using their 'UID' and
+-- type.
 newtype TypedUIDRef typ = TypedUIDRef UID
 
 mkRef :: IsChunk t => t -> TypedUIDRef t

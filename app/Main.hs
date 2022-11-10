@@ -1,51 +1,87 @@
 module Main where
 
+import qualified Control.Exception as E
+
+import Chunk (HasChunkRefs (..))
+import ChunkDB (mkChunkDB, findOrErr, ChunkDB, registered, union, typesRegistered, numRegistered)
+import UID (HasUID (..), UID, mkUid)
+import TypedUIDRef (mkRef, typedFindOrErr)
+
+data Something = Something
+  { _t1Uid :: UID,
+    _t1Refs :: [UID]
+  }
+instance HasUID Something where uid = _t1Uid
+instance HasChunkRefs Something where chunkRefs = _t1Refs
+
+data SomethingElse = SomethingElse
+  { _t2Uid :: UID,
+    _t2Refs :: [UID]
+  }
+instance HasUID SomethingElse where uid = _t2Uid
+instance HasChunkRefs SomethingElse where chunkRefs = _t2Refs
+
 main :: IO ()
 main = do
-    putStrLn "Test"
+  let
+    t11 = Something (mkUid "t11") []
+    t12 = Something (mkUid "t12") [uid t11]
+    t13 = Something (mkUid "t13") [uid t12]
+    t14 = Something (mkUid "t14") []
+    t21 = SomethingElse (mkUid "t21") []
+    t22 = SomethingElse (mkUid "t22") [uid t21]
+    t23 = SomethingElse (mkUid "t23") [uid t22]
+    t24 = SomethingElse (mkUid "t24") []
+
+    tUid = mkRef t12
+    
+    cdb1 :: ChunkDB
+    cdb1 = mkChunkDB [t11, t12, t13]
+
+    cdb2 :: ChunkDB
+    cdb2 = mkChunkDB [t21, t22, t23, t24]
+
+    hdlr :: E.ErrorCall -> IO ()
+    hdlr = print
+
+    run f = E.catch f hdlr
 
 
+  putStrLn "[ Grab a chunk from the ChunkDB, with explicit information ]"
+  run $ print $ uid (findOrErr (mkUid "t11") cdb1 :: Something)
 
--- var1 :: QuantityDict
--- var1 = mkQuantityDict S.Integer (mkUid "var1") "a1" "b1"
+  putStrLn "\n[ Grab a chunk from the ChunkDB with type information from a typed reference (intended to be used!) ]"
+  run $ print $ uid $ typedFindOrErr tUid cdb1
 
--- var2 :: QuantityDict
--- var2 = mkQuantityDict S.Boolean (mkUid "var2") "a2" "b2"
+  putStrLn "\n[ ERROR EXPECTED: Look for a non-existant chunk ]"
+  run $ print $ uid $ typedFindOrErr tUid cdb2
 
--- func1 :: QuantityDict
--- func1 = mkQuantityDict (S.Function (S.Integer NE.:| []) S.Integer) (mkUid "func1") "c1" "d1"
+  putStrLn "\n[ ERROR EXPECTED: Place a chunk in a ChunkDB that doesn't contain the referenced chunks ]"
+  run $ print $ uid $ typedFindOrErr tUid (mkChunkDB [t12]) -- since we didn't place t11 in the DB, it errors! "t12" is denied entry.
 
--- func1_dummy_var :: QuantityDict
--- func1_dummy_var = mkQuantityDict S.Integer (mkUid "func1_dummy_var") "input parameter" "input parameter"
+  putStrLn "\n[ Same run as ^, but with the required referenced chunks ]"
+  run $ print $ uid $ typedFindOrErr tUid (mkChunkDB [t11, t12])
 
--- func2 :: QuantityDict
--- func2 = mkQuantityDict (S.Function (NE.fromList [S.Boolean, S.Integer, S.Integer]) S.Integer) (mkUid "func2") "c2" "d2"
+  putStrLn "\n[ Count of Chunks in CDB1 ]"
+  run $ print $ numRegistered cdb1
 
--- varDef1 :: QDefinition Expr
--- varDef1 = mkQDefinition (mkUid "varDef1") var1 (int 1) "e1"
+  putStrLn "\n[ Show the list of registered chunks by UID ]"
+  run $ print $ registered cdb1
 
--- varDef2 :: QDefinition Expr
--- varDef2 = mkQDefinition (mkUid "varDef2") var2 (not_ $ bool False) "e2"
+  putStrLn "\n[ Show the list of typed registered ]"
+  run $ print $ typesRegistered cdb1
 
--- funcDef1 :: QDefinition Expr
--- funcDef1 = mkFuncDefinition (mkUid "funcDef1") func1 [func1_dummy_var] (add [int 1, sy func1]) "explanation"
+  putStrLn "\n[ Union of two ChunkDBs ]"
+  run $ print $ registered (cdb1 `union` mkChunkDB [t14])
 
--- -- | If this chunk below is evaluated anywhere, it will cause an error.
--- funcDef1_BAD :: QDefinition Expr
--- funcDef1_BAD = mkFuncDefinition (mkUid "funcDef1") func1 [func1_dummy_var] (bool True) "explanation"
+  putStrLn "\n[ Uids of the union of the two ChunkDBs ]"
+  run $ print $ registered (cdb1 `union` cdb2)
 
--- cdb :: ChunkDB
--- cdb =
---   insertAll' [varDef1, varDef2, funcDef1] $
---     insertAll' [var1, var2, func1, func1_dummy_var, func2] empty
+  putStrLn "\n[ Types of the union of the two ChunkDBs ]"
+  run $ print $ typesRegistered (cdb1 `union` cdb2)
 
--- cdbWithBadChunks :: ChunkDB 
--- cdbWithBadChunks = insert cdb funcDef1_BAD
+  putStrLn "\n[ Count of the union of the two ChunkDBs ]"
+  run $ print $ numRegistered (cdb1 `union` cdb2)
 
--- test1 :: IO ()
--- test1 = do
---   putStrLn "Hello world!"
---   print $ uid (findOrErr (uid func1_dummy_var) cdb :: QuantityDict)
---   putStrLn "Expect an error to follow this message:"
---   print $ uid (findOrErr (uid func1_dummy_var) cdbWithBadChunks :: QuantityDict)
-
+  putStrLn "\n[ ERROR EXPECTED: Union of the same ChunkDB (UID Conflicts!) ]"
+  run $ print $ registered (cdb1 `union` cdb1)
