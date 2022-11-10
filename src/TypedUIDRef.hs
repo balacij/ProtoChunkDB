@@ -7,8 +7,7 @@ module TypedUIDRef
 where
 
 import Data.Maybe (fromMaybe)
-import Data.Typeable (Typeable)
-import Chunk (HasChunkRefs, IsChunk)
+import Chunk (IsChunk)
 import ChunkDB (ChunkDB, find)
 import UID (HasUID (uid), UID)
 
@@ -22,5 +21,5 @@ mkRef = TypedUIDRef . uid
 typedFind :: IsChunk t => TypedUIDRef t -> ChunkDB -> Maybe t
 typedFind (TypedUIDRef u) = find u
 
-typedFindOrErr :: (Typeable t, HasUID t, HasChunkRefs t) => TypedUIDRef t -> ChunkDB -> t
+typedFindOrErr :: IsChunk t => TypedUIDRef t -> ChunkDB -> t
 typedFindOrErr tu cdb = fromMaybe (error "Typed UID dereference failed.") (typedFind tu cdb)
