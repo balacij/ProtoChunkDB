@@ -1,12 +1,13 @@
 {-# LANGUAGE ExistentialQuantification #-}
 module Main where
 
-import qualified Data.Map.Strict as M
+import Prelude hiding (lookup)
+import Data.Map.Strict (Map, lookup)
 
 type UID = String
 
 
-type ChunkDB = M.Map UID Chunk
+type ChunkDB = Map UID Chunk
 
 data Chunk = forall a. Chunk a
 
@@ -17,7 +18,7 @@ data QuantityDict = QD {
 
 retrieveQD :: UID -> ChunkDB -> Maybe QuantityDict
 retrieveQD u cdb = do
-  (Chunk expectedQd) <- M.lookup u cdb
+  (Chunk expectedQd) <- lookup u cdb
   pure expectedQd
 
 main :: IO ()
