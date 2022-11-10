@@ -42,6 +42,21 @@ newtype ChunkDB = ChunkDB (ChunkByUID, ChunksByTypeRep)
 empty :: ChunkDB
 empty = ChunkDB (M.empty, M.empty)
 
+mkChunkDB :: IsChunk a => [a] -> ChunkDB
+mkChunkDB = insertAll empty
+
+registered :: ChunkDB -> [UID]
+registered (ChunkDB (x, _)) = M.keys x
+
+isRegistered :: UID -> ChunkDB -> Bool
+isRegistered u (ChunkDB (x, _)) = M.member u x
+
+typesRegistered :: ChunkDB -> [TypeRep]
+typesRegistered (ChunkDB (_, x)) = M.keys x
+
+numRegistered :: ChunkDB -> Int
+numRegistered (ChunkDB (x, _)) = M.size x
+
 find :: Typeable a => UID -> ChunkDB -> Maybe a
 find u (ChunkDB (tc, _)) = do
   (c', _) <- M.lookup u tc
@@ -114,20 +129,7 @@ union (ChunkDB (lum, ltrm)) (ChunkDB (rum, rtrm)) = ChunkDB (um, trm)
     trm :: ChunksByTypeRep
     trm = M.unionWith (++) ltrm rtrm
 
-mkChunkDB :: IsChunk a => [a] -> ChunkDB
-mkChunkDB = insertAll empty
 
-registered :: ChunkDB -> [UID]
-registered (ChunkDB (x, _)) = M.keys x
-
-isRegistered :: UID -> ChunkDB -> Bool
-isRegistered u (ChunkDB (x, _)) = M.member u x
-
-typesRegistered :: ChunkDB -> [TypeRep]
-typesRegistered (ChunkDB (_, x)) = M.keys x
-
-numRegistered :: ChunkDB -> Int
-numRegistered (ChunkDB (x, _)) = M.size x
 
 {- FIXME: TO BE REWRITTEN, UNIMPORTANT -}
 refbyTable :: ChunkDB -> M.Map UID [UID]
