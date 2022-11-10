@@ -50,11 +50,9 @@ find u (ChunkDB (tc, _)) = do
 findOrErr :: Typeable a => UID -> ChunkDB -> a
 findOrErr u = fromMaybe (error $ "Failed to find chunk " ++ show u) . find u
 
--- Is this TypeRep really needed? Well, for now, it's a hack to shorten our
--- lists a bit and pre-cache our type lists by their typerep. Justified,... but
--- not optimal. It would be nice if we could have the chunks pre-unChunked or if
--- we could avoid the TypeRep altogether! On the bright side, we get order lists
--- (by insertion order) for cheap!
+-- The TypeRep input and implicit type information is not optimal, but it is
+-- required because we don't have access to the type information in the raw
+-- expressions.
 findAll :: Typeable a => TypeRep -> ChunkDB -> [a]
 findAll tr (ChunkDB (_, trm)) = maybe [] (mapMaybe unChunk) (M.lookup tr trm)
 
@@ -119,6 +117,24 @@ union (ChunkDB (lum, ltrm)) (ChunkDB (rum, rtrm)) = ChunkDB (um, trm)
 mkChunkDB :: IsChunk a => [a] -> ChunkDB
 mkChunkDB = insertAll empty
 
+registered :: ChunkDB -> [UID]
+registered (ChunkDB (x, _)) = M.keys x
+
+isRegistered :: UID -> ChunkDB -> Bool
+isRegistered u (ChunkDB (x, _)) = M.member u x
+
+typesRegistered :: ChunkDB -> [TypeRep]
+typesRegistered (ChunkDB (_, x)) = M.keys x
+
+numRegistered :: ChunkDB -> Int
+numRegistered (ChunkDB (x, _)) = M.size x
+
+{- FIXME: TO BE REWRITTEN, UNIMPORTANT -}
+refbyTable :: ChunkDB -> M.Map UID [UID]
+refbyTable (ChunkDB (x, _)) = M.map snd x
+
+
+
 -- Note: The below should be a 'faster' variant of the above 'mkChunkDB', but it
 -- is missing a few of the sanity checks on chunks, so it's not quite ready yet!
 
@@ -148,21 +164,7 @@ mkChunkDB = insertAll empty
 --     csbtr :: ChunksByTypeRep
 --     csbtr = M.fromList trcs
 
-registered :: ChunkDB -> [UID]
-registered (ChunkDB (x, _)) = M.keys x
 
-isRegistered :: UID -> ChunkDB -> Bool
-isRegistered u (ChunkDB (x, _)) = M.member u x
-
-typesRegistered :: ChunkDB -> [TypeRep]
-typesRegistered (ChunkDB (_, x)) = M.keys x
-
-numRegistered :: ChunkDB -> Int
-numRegistered (ChunkDB (x, _)) = M.size x
-
-{- FIXME: TO BE REWRITTEN, UNIMPORTANT -}
-refbyTable :: ChunkDB -> M.Map UID [UID]
-refbyTable (ChunkDB (x, _)) = M.map snd x
 
 {-
 consumeAllWithTyCon :: Typeable a => TyCon -> (forall b. Typeable (a b) => a b -> c) -> ChunkDB -> [c]
